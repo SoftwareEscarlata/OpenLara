@@ -18,6 +18,8 @@ CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_TYPE_AUTO=y
 # don't let IDF quietly place task stacks etc. in PSRAM
 CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+# allow EXT_RAM_BSS_ATTR (cold engine arrays like gBackgroundCopy go to PSRAM)
+CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y
 
 # Caches — NOT the defaults; measured wins for a software rasterizer reading
 # textures from PSRAM. 64B line is required-safe with octal DDR (64B wrap bursts).

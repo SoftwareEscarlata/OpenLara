@@ -9,7 +9,7 @@
 #define ENEMY_TURN_4    ANGLE(4)
 #define ENEMY_TURN_5    ANGLE(5)
 
-EWRAM_DATA ExtraInfoEnemy enemiesExtra[MAX_ENEMIES];
+EWRAM_COLD ExtraInfoEnemy enemiesExtra[MAX_ENEMIES];
 
 enum AggressionLevel
 {

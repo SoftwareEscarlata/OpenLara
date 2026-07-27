@@ -46,6 +46,21 @@
 
     #define _CRT_SECURE_NO_WARNINGS
     #include <windows.h>
+#elif defined(__ESP32__)
+    // ESP32-S3 (Waveshare ESP32-S3-Touch-LCD-2): dual LX7 @240MHz, 512KB SRAM,
+    // 8MB octal PSRAM. Levels are copied from mmap'd flash into PSRAM at load.
+    #define USE_DIV_TABLE
+
+    #define MODE13
+    #define FRAME_WIDTH  320
+    #define FRAME_HEIGHT 240
+    #define VRAM_WIDTH   (FRAME_WIDTH / 2)
+
+    #define USE_FMT     (LVL_FMT_PKD)
+
+    #include <stdlib.h>
+    #include <stdio.h>
+    #include "esp_attr.h"   // EXT_RAM_BSS_ATTR for EWRAM_COLD
 #elif defined(__WIN32__)
     #define USE_DIV_TABLE
     #define MODEHW
@@ -211,6 +226,17 @@
 #endif
 
 // Optimization flags =========================================================
+#ifdef __ESP32__
+// start with the proven GBA potato profile; the S3 has CPU headroom to relax
+// these later (measured, one at a time)
+    #define HIDE_CORPSES (30*10) // 10 sec
+    #define LOD_TRAP_FLOOR
+    #define NO_STATIC_MESH_PLANTS
+    #define MAX_ENEMIES 3
+    #define VIEW_DIST (10 << 10)
+    #define FAST_HITMASK
+#endif
+
 #ifdef __GBA__
 // hide dead enemies after a while to reduce the number of polygons on the screen
     #define HIDE_CORPSES (30*10) // 10 sec
@@ -315,11 +341,16 @@ typedef uint16             divTableInt;
 
 #define ADDR_ALIGN4(x)  ((uint8*)x += ((intptr_t(x) + 3) & ~3) - intptr_t(x))
 
+#if defined(__ESP32__)
+// the xtensa toolchain's headers already declare placement new — use theirs
+#include <new>
+#else
 //#include <new>
 inline void* operator new(size_t, void *ptr)
 {
     return ptr;
 }
+#endif
 
 #if defined(__3DO__) || defined(__32X__)
 X_INLINE int32 abs(int32 x) {
@@ -333,6 +364,8 @@ X_INLINE int32 abs(int32 x) {
     #define int2str(x,str) sprintf(str, "%d", x)
 #elif defined(__TNS__)
     #define int2str(x,str) __itoa(x, str, 10)
+#elif defined(__ESP32__)
+    #define int2str(x,str) itoa(x, str, 10)
 #else
     #define int2str(x,str) _itoa(x, str, 10)
 #endif
@@ -349,6 +382,15 @@ X_INLINE int32 abs(int32 x) {
     #define EWRAM_CODE
 #endif
 
+// "cold EWRAM": large, rarely-touched arrays that the GBA already parks in its
+// slow EWRAM. On ESP32-S3 they live in octal PSRAM (cache-backed) so internal
+// SRAM stays free for the framebuffer and hot engine state.
+#if defined(__ESP32__)
+    #define EWRAM_COLD EXT_RAM_BSS_ATTR
+#else
+    #define EWRAM_COLD EWRAM_DATA
+#endif
+
 #if defined(__WIN32__) || defined(__GBA_WIN__) || defined(__ESP32_WIN__)
     #define ASSERT(x) { if (!(x)) { DebugBreak(); } }
     #define STATIC_ASSERT(x) typedef char static_assert_##__COUNTER__[(x) ? 1 : -1]
@@ -359,6 +401,10 @@ X_INLINE int32 abs(int32 x) {
 
 #if defined(__GBA_WIN__) || defined(__ESP32_WIN__)
     extern uint16 fb[FRAME_WIDTH * FRAME_HEIGHT];
+#elif defined(__ESP32__)
+    // right-sized for 8bpp: W*H bytes = W*H/2 uint16 elements (saves 75KB of SRAM
+    // vs the upstream 2x-oversized declaration kept on the sim for diff-minimalism)
+    extern uint16 fb[FRAME_WIDTH * FRAME_HEIGHT / 2];
 #elif defined(__GBA__)
     extern uint32 fb;
 #elif defined(__TNS__)
@@ -407,7 +453,7 @@ extern uint8* vramPtr;
     #define SND_DECODE(x)    ((x) - 128)
     #define SND_MIN          -128
     #define SND_MAX          127
-#elif defined(__GBA_WIN__) || defined(__ESP32_WIN__)
+#elif defined(__GBA_WIN__) || defined(__ESP32_WIN__) || defined(__ESP32__)
     #define SND_SAMPLES      1024
     #define SND_OUTPUT_FREQ  22050
     #define SND_SAMPLE_FREQ  22050
@@ -2822,7 +2868,7 @@ void matrixFrame_c(const void* pos, const void* angles);
 void matrixFrameLerp(const void* pos, const void* anglesA, const void* anglesB, int32 delta, int32 rate);
 void matrixSetView(const vec3i &pos, int32 angleX, int32 angleY);
 
-#if defined(__GBA__) || defined(__GBA_WIN__) || defined(__ESP32_WIN__)
+#if defined(__GBA__) || defined(__GBA_WIN__) || defined(__ESP32_WIN__) || defined(__ESP32__)
 #define renderInit()
 #define renderFree()
 #define renderSwap()

@@ -7,7 +7,7 @@ EWRAM_DATA Room* roomsList[MAX_ROOM_LIST];
 
 //#ifdef ROM_READ
 EWRAM_DATA int32 dynSectorsCount;
-EWRAM_DATA Sector dynSectors[MAX_DYN_SECTORS];   // EWRAM 8k
+EWRAM_COLD Sector dynSectors[MAX_DYN_SECTORS];   // EWRAM 8k
 //#endif
 
 const Sector* Sector::getSectorBelow(int32 posX, int32 posZ) const
