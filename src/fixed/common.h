@@ -31,7 +31,22 @@
 
 #define FIXED_SHIFT     14
 
-#if defined(__WIN32__)
+#if defined(__ESP32_WIN__)
+    // ESP32-S3 Windows simulator: byte-exact reference for the ESP32-S3 port.
+    // Same MODE13/320x240/PKD profile the real __ESP32__ target will use.
+    #define USE_DIV_TABLE
+
+    #define MODE13
+    #define FRAME_WIDTH  320
+    #define FRAME_HEIGHT 240
+    // fb row stride in uint16 units (2 pixels per element)
+    #define VRAM_WIDTH   (FRAME_WIDTH / 2)
+
+    #define USE_FMT     (LVL_FMT_PKD)
+
+    #define _CRT_SECURE_NO_WARNINGS
+    #include <windows.h>
+#elif defined(__WIN32__)
     #define USE_DIV_TABLE
     #define MODEHW
     #define GAPI_GL1
@@ -179,7 +194,7 @@
         #define LOG(...)    printf(__VA_ARGS__)
     #endif
 #else
-    #define LOG()
+    #define LOG(...)
 #endif
 
 #if !defined(__3DO__)
@@ -334,7 +349,7 @@ X_INLINE int32 abs(int32 x) {
     #define EWRAM_CODE
 #endif
 
-#if defined(__WIN32__) || defined(__GBA_WIN__)
+#if defined(__WIN32__) || defined(__GBA_WIN__) || defined(__ESP32_WIN__)
     #define ASSERT(x) { if (!(x)) { DebugBreak(); } }
     #define STATIC_ASSERT(x) typedef char static_assert_##__COUNTER__[(x) ? 1 : -1]
 #else
@@ -342,7 +357,7 @@ X_INLINE int32 abs(int32 x) {
     #define STATIC_ASSERT(x)
 #endif
 
-#if defined(__GBA_WIN__)
+#if defined(__GBA_WIN__) || defined(__ESP32_WIN__)
     extern uint16 fb[FRAME_WIDTH * FRAME_HEIGHT];
 #elif defined(__GBA__)
     extern uint32 fb;
@@ -392,7 +407,7 @@ extern uint8* vramPtr;
     #define SND_DECODE(x)    ((x) - 128)
     #define SND_MIN          -128
     #define SND_MAX          127
-#elif defined(__GBA_WIN__)
+#elif defined(__GBA_WIN__) || defined(__ESP32_WIN__)
     #define SND_SAMPLES      1024
     #define SND_OUTPUT_FREQ  22050
     #define SND_SAMPLE_FREQ  22050
@@ -2807,7 +2822,7 @@ void matrixFrame_c(const void* pos, const void* angles);
 void matrixFrameLerp(const void* pos, const void* anglesA, const void* anglesB, int32 delta, int32 rate);
 void matrixSetView(const vec3i &pos, int32 angleX, int32 angleY);
 
-#if defined(__GBA__) || defined(__GBA_WIN__)
+#if defined(__GBA__) || defined(__GBA_WIN__) || defined(__ESP32_WIN__)
 #define renderInit()
 #define renderFree()
 #define renderSwap()
@@ -2950,7 +2965,7 @@ const void* osLoadLevel(LevelID id);
         #define PROFILE_STOP(value) {\
             value += (osGetSystemTimeMS() - g_timer);\
         }
-    #elif defined(__WIN32__) || defined(__GBA_WIN__)
+    #elif defined(__WIN32__) || defined(__GBA_WIN__) || defined(__ESP32_WIN__)
         extern LARGE_INTEGER g_timer;
         extern LARGE_INTEGER g_current;
 

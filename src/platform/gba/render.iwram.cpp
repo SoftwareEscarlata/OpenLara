@@ -25,7 +25,7 @@ struct ViewportRel {
 
 ViewportRel viewportRel;
 
-#if defined(__GBA_WIN__)
+#if defined(__GBA_WIN__) || defined(__ESP32_WIN__)
     uint16 fb[FRAME_WIDTH * FRAME_HEIGHT];
 #elif defined(__GBA__)
     uint32 fb = MEM_VRAM;

@@ -1,0 +1,9 @@
+# build artifacts
+*.o
+*.exe
+*.log
+render.cpp
+# runtime files
+data/
+settings.dat
+savegame.dat
