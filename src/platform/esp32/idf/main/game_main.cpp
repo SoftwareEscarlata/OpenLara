@@ -16,6 +16,8 @@
 #include "esp_partition.h"
 #include "driver/gpio.h"
 
+#include "driver/usb_serial_jtag.h"
+
 #include "display.h"
 #include "board_pins.h"
 
@@ -130,21 +132,93 @@ const void* osLoadLevel(LevelID id)
     return levelData;
 }
 
-// ---- input: BOOT button placeholder (full GPIO pad in Phase 4) ------------
+// ---- input: serial keys + BOOT button (full GPIO pad in Phase 4) ----------
+// Serial control over USB (for development without soldered buttons):
+//   w/s/a/d = d-pad   x = A (action)   z = B (jump)   q = L   e = R (walk)
+//   Enter = START (inventory/confirm)   space = SELECT
+// Each received char holds its key for a few frames (serial has no key-up).
+
+#define SERIAL_HOLD_FRAMES 8
+
+static uint8 sHold[16]; // per-IK_* bit countdown
+
+// {gpio, IK_* bit} — physical pad on header P1 (see board_pins.h)
+static const struct { uint8 gpio; uint32 mask; } sButtons[] = {
+    { PIN_BTN_UP,     IK_UP     },
+    { PIN_BTN_DOWN,   IK_DOWN   },
+    { PIN_BTN_LEFT,   IK_LEFT   },
+    { PIN_BTN_RIGHT,  IK_RIGHT  },
+    { PIN_BTN_A,      IK_A      },
+    { PIN_BTN_B,      IK_B      },
+    { PIN_BTN_L,      IK_L      },
+    { PIN_BTN_R,      IK_R      },
+    { PIN_BTN_START,  IK_START  },
+    { PIN_BTN_SELECT, IK_SELECT },
+};
+
 static void inputInit()
 {
+    uint64_t mask = 1ULL << GPIO_NUM_0; // BOOT
+    for (unsigned i = 0; i < sizeof(sButtons) / sizeof(sButtons[0]); i++) {
+        mask |= 1ULL << sButtons[i].gpio;
+    }
+
     gpio_config_t cfg = {};
-    cfg.pin_bit_mask = 1ULL << GPIO_NUM_0;
+    cfg.pin_bit_mask = mask;
     cfg.mode = GPIO_MODE_INPUT;
-    cfg.pull_up_en = GPIO_PULLUP_ENABLE;
+    cfg.pull_up_en = GPIO_PULLUP_ENABLE; // 16/21 also have 4.7K on board
     gpio_config(&cfg);
+
+    usb_serial_jtag_driver_config_t usb_cfg = {
+        .tx_buffer_size = 1024,
+        .rx_buffer_size = 256,
+    };
+    usb_serial_jtag_driver_install(&usb_cfg);
+}
+
+static int keyBit(char c)
+{
+    switch (c) {
+        case 'w': return 0;   // IK_UP     = 1<<0
+        case 'd': return 1;   // IK_RIGHT
+        case 's': return 2;   // IK_DOWN
+        case 'a': return 3;   // IK_LEFT
+        case 'x': return 4;   // IK_A
+        case 'z': return 5;   // IK_B
+        case 'q': return 10;  // IK_L
+        case 'e': return 11;  // IK_R
+        case '\r':
+        case '\n': return 14; // IK_START
+        case ' ': return 15;  // IK_SELECT
+    }
+    return -1;
 }
 
 static void inputUpdate()
 {
-    // BOOT (active low): held = START+A — enough to leave the title screen
-    // and confirm menu entries for the first-frame milestone
-    keys = gpio_get_level(GPIO_NUM_0) ? 0 : (IK_START | IK_A);
+    uint8 buf[16];
+    int n = usb_serial_jtag_read_bytes(buf, sizeof(buf), 0);
+    for (int i = 0; i < n; i++) {
+        int bit = keyBit((char)buf[i]);
+        ESP_LOGI(TAG, "rx '%c' -> bit %d (inv state %d)",
+                 buf[i] >= 32 ? buf[i] : '?', bit, (int)inventory.state);
+        if (bit >= 0) sHold[bit] = SERIAL_HOLD_FRAMES;
+    }
+
+    uint32 k = 0;
+    for (int i = 0; i < 16; i++) {
+        if (sHold[i]) { sHold[i]--; k |= 1u << i; }
+    }
+
+    // physical pad (active low)
+    for (unsigned i = 0; i < sizeof(sButtons) / sizeof(sButtons[0]); i++) {
+        if (!gpio_get_level((gpio_num_t)sButtons[i].gpio)) k |= sButtons[i].mask;
+    }
+
+    // BOOT button (active low) = START+A, still works standalone
+    if (!gpio_get_level(GPIO_NUM_0)) k |= IK_START | IK_A;
+
+    keys = k;
 }
 
 // ---- game task ------------------------------------------------------------

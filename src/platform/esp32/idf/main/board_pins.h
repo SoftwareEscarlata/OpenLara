@@ -42,7 +42,18 @@
 #define PIN_TOUCH_INT   46    // wired; vendor demos poll instead (chip NAKs while asleep)
 #define TOUCH_I2C_ADDR  0x15
 
-// ---- Free GPIOs for game buttons (camera unplugged) ----
-// 2,4,6,7,8,9,10,11,12,13,14,15,16,17,18,21  (16/21 already have 4.7K pullups)
-// plus GPIO0 (BOOT key, active low). Avoid: 19/20 (USB), 43/44 (UART0),
-// 46/47/48 (touch/I2C), 5 (battery ADC), 3 (IMU INT), 35-37 (octal PSRAM).
+// ---- Game buttons: ALL on header P1, active low, common GND at P1 pin 13 ----
+// P1 pin order (top to bottom): IO2, IO4, IO6, IO16, IO17, IO18, IO21, IO8,
+// IO7, IO10, IO20, IO19, GND, 5V. IO16/IO21 already have 4.7K pullups on
+// board (camera SCCB); the rest use internal pullups. Camera must stay
+// unplugged (IO2/4/6/7/8/10 are DVP pins). GPIO0 (BOOT) stays as extra START.
+#define PIN_BTN_UP      2   // P1 pin 1
+#define PIN_BTN_DOWN    4   // P1 pin 2
+#define PIN_BTN_LEFT    6   // P1 pin 3
+#define PIN_BTN_RIGHT   16  // P1 pin 4  (hw pullup)
+#define PIN_BTN_A       17  // P1 pin 5
+#define PIN_BTN_B       18  // P1 pin 6
+#define PIN_BTN_L       21  // P1 pin 7  (hw pullup)
+#define PIN_BTN_R       8   // P1 pin 8
+#define PIN_BTN_START   7   // P1 pin 9
+#define PIN_BTN_SELECT  10  // P1 pin 10
