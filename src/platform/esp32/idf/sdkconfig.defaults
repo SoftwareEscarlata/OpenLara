@@ -1,0 +1,47 @@
+# OpenLara ESP32-S3 — Waveshare ESP32-S3-Touch-LCD-2 (S3R8: 8MB octal PSRAM, 16MB quad flash)
+CONFIG_IDF_TARGET="esp32s3"
+
+# CPU at full speed
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=240
+
+# Flash: 16MB quad
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# PSRAM: 8MB octal DDR @ 80MHz
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_TYPE_AUTO=y
+# don't let IDF quietly place task stacks etc. in PSRAM
+CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+
+# Caches — NOT the defaults; measured wins for a software rasterizer reading
+# textures from PSRAM. 64B line is required-safe with octal DDR (64B wrap bursts).
+CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y
+CONFIG_ESP32S3_INSTRUCTION_CACHE_8WAYS=y
+CONFIG_ESP32S3_DATA_CACHE_64KB=y
+CONFIG_ESP32S3_DATA_CACHE_8WAYS=y
+CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
+
+# Custom partition table (app + raw level data)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# Compiler: optimize for performance
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# FreeRTOS tick 1000Hz for finer timing
+CONFIG_FREERTOS_HZ=1000
+
+# no watchdog interference while profiling the display
+CONFIG_ESP_TASK_WDT_INIT=n
+
+# keep radio stacks out (no WiFi/BT in the game) — saves ~50KB SRAM
+# (nothing to disable explicitly: simply don't include the components)
+
+# Logging: INFO for now
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
